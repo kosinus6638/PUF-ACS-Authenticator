@@ -26,6 +26,7 @@ add_library(
 find_package(MbedTLS QUIET)
 if(${MbedTLS_FOUND})
     message("Using MBedTLS cmake component")
+    target_link_libraries( ${PUF_ACS_NAME} MbedTLS::mbedtls )
 else()
     message("Linking against mbedtls")
     target_link_libraries( ${PUF_ACS_NAME} mbedtls )
