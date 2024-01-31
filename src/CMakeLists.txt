@@ -10,7 +10,7 @@ add_executable(
 
 find_package(
     Boost
-    1.72 REQUIRED
+    1.74 REQUIRED
     COMPONENTS program_options REQUIRED
 )
 

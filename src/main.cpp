@@ -19,8 +19,6 @@ int main(int argc, char** argv) {
     signal(SIGINT, intHandler);
     srand(1337);
 
-    puf::print_version();
-
     try {
         BerkeleyNetwork net; 
         AuthenticationServerImpl as; 

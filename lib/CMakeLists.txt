@@ -1,6 +1,5 @@
 set(PUF_ACS_NAME "puf-acs" CACHE STRING "Name of the PUF-ACS library")
 
-add_subdirectory(mbedtls)
 
 set(PUF_ACS_SOURCES
     PUF-ACS/math.cpp
@@ -24,14 +23,12 @@ add_library(
     ${PUF_ACS_SOURCES}
 )
 
-
-#target_include_directories(
-#    ${PUF_ACS_NAME}
-#    PRIVATE lib/mbedtls/include/mbedtls
-#)
-#
-#
-#target_link_libraries(
-#    ${PUF_ACS_NAME}
-#    PRIVATE MbedTLS::mbedtls
-#)
+find_package(MbedTLS QUIET)
+if(${MbedTLS_FOUND})
+    message("Using MBedTLS cmake component")
+else()
+    message("Linking against mbedtls")
+    target_link_libraries( ${PUF_ACS_NAME} mbedtls )
+    target_link_libraries( ${PUF_ACS_NAME} mbedx509 )
+    target_link_libraries( ${PUF_ACS_NAME} mbedcrypto )
+endif()
