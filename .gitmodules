@@ -1,0 +1,3 @@
+[submodule "lib/PUF-ACS"]
+	path = lib/PUF-ACS
+	url = git@github.com:kosinus6638/PUF-ACS.git
