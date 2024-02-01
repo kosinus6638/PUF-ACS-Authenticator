@@ -6,12 +6,14 @@
 #include <errno.h>
 
 
-BerkeleyNetwork::BerkeleyNetwork() : 
+BerkeleyNetwork::BerkeleyNetwork(const char* iface_name) : 
     initialised(false), 
     remote_address{0}, 
     local_address{0}, 
     addr_size(sizeof(struct sockaddr_ll))
-{}
+{
+    strncpy(ifName, iface_name, sizeof(ifName));
+}
 
 
 void BerkeleyNetwork::get_local_endpoint() {
@@ -56,8 +58,6 @@ void BerkeleyNetwork::set_timeout() {
 
 void BerkeleyNetwork::init() {
     if(initialised) return;
-
-    strcpy(ifName, DEFAULT_IF);
 
     // Create raw packet socket
     if ((sockfd = socket(AF_PACKET, SOCK_RAW, 0)) == -1) {

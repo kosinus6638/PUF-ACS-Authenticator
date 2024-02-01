@@ -8,12 +8,6 @@
 #include <linux/if_ether.h>
 
 
-#define DEFAULT_IF "enp4s0"
-// #define DEFAULT_IF "enp9s0"
-// #define DEFAULT_IF "lo"
-// #define DEFAULT_IF "eno1"
-
-
 class BerkeleyNetwork : public puf::Network {
 private:
     int sockfd;
@@ -29,7 +23,7 @@ private:
     void set_timeout();
 
 public:
-    BerkeleyNetwork();
+    BerkeleyNetwork(const char* iface_name);
     void init() override;
     void send(uint8_t *buf, size_t bufSize) override;
     int receive(uint8_t *buf, size_t bufSize) override;
