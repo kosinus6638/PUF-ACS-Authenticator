@@ -81,23 +81,38 @@ int main(int argc, char** argv) {
     }
 
 
-    try {
-        BerkeleyNetwork net; 
-        AuthenticationServerImpl as; 
-
+        BerkeleyNetwork net( opts.iface_name.c_str() ); 
+        AuthenticationServerImpl as( opts.resource_file.c_str() ); 
         Authenticator au(net, as);
+
         au.init();
 
+        uint8_t buffer[1528];
+        size_t n;
+
         while(keepGoing) {
-            try {
-                au.accept();
-            } catch(const NetworkException& e) {
-            } catch(const Exception& e) {
-                puts(e.what());
+
+        try {
+            n = net.receive(buffer, sizeof(buffer));
+            switch( deduce_type(buffer, n) ) {
+                case PUF_CON_E:
+                    if( au.accept(buffer, n) != 0) {
+                        std::cout << "Rejected" << std::endl;
+                    } else {
+                        std::cout << "Accepted" << std::endl;
+                    }
+                    break;
+                case PUF_PERFORMANCE_E:
+                    break;
+                case PUF_UNKNOWN_E:
+                    break;
+                default:
+                    ;
             }
+        } catch(const NetworkException& e) {
+        } catch(const Exception &e) {
+            puts(e.what());
         }
-    } catch(const Exception& e) {
-        puts(e.what());
     }
 
 
