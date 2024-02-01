@@ -21,10 +21,12 @@ public:
 
 
 class AuthenticationServerImpl : public puf::AuthenticationServer {
+    std::string url;
     std::map<uint64_t, SupplicantEntry> entries;
 public:
-    void fetch(const char* url=DEFAULT_RESOURCE);
-    void sync(const char* url=DEFAULT_RESOURCE);
-    void store(const puf::MAC& base_mac, const puf::ECP_Point& A, const puf::MAC& hashed_mac, int ctr=DEFAULT_COUNTER);
-    puf::QueryResult query(const puf::MAC& hashed_mac);
+    AuthenticationServerImpl(std::string url_);
+    void fetch() override;
+    void sync() override;
+    void store(const puf::MAC& base_mac, const puf::ECP_Point& A, puf::MAC& hashed_mac, int ctr) override;
+    puf::QueryResult query(const puf::MAC& hashed_mac) override;
 };

@@ -99,7 +99,10 @@ void SupplicantEntry::hash_mac() {
 
 /* ------------------------------- AuthenticationServerImpl Implementation -----------------------------------*/
 
-void AuthenticationServerImpl::fetch(const char* url) {
+AuthenticationServerImpl::AuthenticationServerImpl(std::string url_) : url(url_) { }
+
+
+void AuthenticationServerImpl::fetch() {
     std::ifstream ifs;
     std::string csv_row;
     bool failed = false;
@@ -114,7 +117,7 @@ void AuthenticationServerImpl::fetch(const char* url) {
                 SupplicantEntry to_insert(csv_row);
                 entries.insert( std::make_pair(to_insert.hashed_mac.to_u64(), to_insert) );
             } catch(...) {
-                std::cerr << "Error creating entry: " << csv_row << '\n';
+                std::cerr << "Error loading entry: " << csv_row << '\n';
             }
         }
     } catch(const std::ios_base::failure &e) {
@@ -127,7 +130,7 @@ void AuthenticationServerImpl::fetch(const char* url) {
 
 
 
-void AuthenticationServerImpl::sync(const char* url) {
+void AuthenticationServerImpl::sync() {
     std::ofstream ofs;
     bool failed = false;
 
@@ -145,18 +148,28 @@ void AuthenticationServerImpl::sync(const char* url) {
 }
 
 
-void AuthenticationServerImpl::store(const puf::MAC& base_mac, const puf::ECP_Point& A, 
-    const puf::MAC& hashed_mac, int ctr) 
+void AuthenticationServerImpl::store(const puf::MAC& base_mac, const puf::ECP_Point& A, puf::MAC& hashed_mac, int ctr) 
 {
-    entries.insert( std::make_pair(hashed_mac.to_u64(), SupplicantEntry(ctr, base_mac, hashed_mac, A)) );
+    if( !entries.count(hashed_mac.to_u64()) ) {
+        entries.insert( std::make_pair(hashed_mac.to_u64(), SupplicantEntry(ctr, base_mac, hashed_mac, A)) );
+        std::cout << "Inserted new mac" << std::endl;
+    }
 }
 
 
 puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac) {
+    puf::QueryResult retval;
+    retval.valid = false;
+
     if( auto it=entries.find(hashed_mac.to_u64()); it != entries.end() ) {
-        it->second.decrease_counter();
-        it->second.hash_mac();
-        // return std::make_pair( it->second.A, it->second.base_mac );
+        auto &entry = it->second;
+        if(entry.ctr > 0) {
+            entry.decrease_counter();
+            retval.ecp = entry.A;
+            retval.mac = entry.base_mac;
+            retval.valid = true;
+        }
     }
-    return {};
+
+    return retval;
 }
