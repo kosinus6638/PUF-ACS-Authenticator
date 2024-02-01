@@ -99,7 +99,9 @@ void SupplicantEntry::hash_mac() {
 
 /* ------------------------------- AuthenticationServerImpl Implementation -----------------------------------*/
 
-AuthenticationServerImpl::AuthenticationServerImpl(std::string url_) : url(url_) { }
+AuthenticationServerImpl::AuthenticationServerImpl(std::string url_, bool save_on_edit) : 
+    url(url_), 
+    save_on_edit_(save_on_edit) {}
 
 
 void AuthenticationServerImpl::fetch() {
@@ -153,6 +155,7 @@ void AuthenticationServerImpl::store(const puf::MAC& base_mac, const puf::ECP_Po
     if( !entries.count(hashed_mac.to_u64()) ) {
         entries.insert( std::make_pair(hashed_mac.to_u64(), SupplicantEntry(ctr, base_mac, hashed_mac, A)) );
         std::cout << "Inserted new mac" << std::endl;
+        if(save_on_edit_) sync();
     }
 }
 
@@ -171,6 +174,7 @@ puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac) {
             retval.mac = entry.base_mac;
             retval.valid = true;
         } 
+        if(save_on_edit_) sync();
     }
 
     return retval;

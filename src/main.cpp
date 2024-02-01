@@ -22,6 +22,7 @@ typedef struct Options {
     int payload_bufsize;
     int rounds;
     bool verbose;
+    bool save_on_edit;
 } Options;
 
 
@@ -43,6 +44,7 @@ Options get_options(int argc, char** argv) {
         ("interface,I", po::value<std::string>(&retval.iface_name)->default_value("enp4s0"), "Bind to interface")
         ("payload_bufsize,p", po::value<int>(&retval.payload_bufsize)->default_value(3), "Payload buffer size")
         ("rounds,r", po::value<int>(&retval.rounds)->default_value(10), "Number of rounds")
+        ("save_on_edit,s", "Save resource file on edit")
         ("verbose,v", "Verbose output")
     ;
 
@@ -63,6 +65,7 @@ Options get_options(int argc, char** argv) {
     }
 
     retval.verbose = vm.count("verbose");
+    retval.save_on_edit = vm.count("save_on_edit");
     return retval;
 }
 
@@ -81,17 +84,18 @@ int main(int argc, char** argv) {
     }
 
 
-        BerkeleyNetwork net( opts.iface_name.c_str() ); 
-        AuthenticationServerImpl as( opts.resource_file.c_str() ); 
-        Authenticator au(net, as);
+    try {
 
-        au.init();
+    BerkeleyNetwork net( opts.iface_name.c_str() ); 
+    AuthenticationServerImpl as( opts.resource_file.c_str(), opts.save_on_edit ); 
+    Authenticator au(net, as);
 
-        uint8_t buffer[1528];
-        size_t n;
+    au.init();
 
-        while(keepGoing) {
+    uint8_t buffer[1528];
+    size_t n;
 
+    while(keepGoing) {
         try {
             n = net.receive(buffer, sizeof(buffer));
             switch( deduce_type(buffer, n) ) {
@@ -115,6 +119,9 @@ int main(int argc, char** argv) {
         }
     }
 
+    } catch(const Exception &e) {
+        puts(e.what());
+    }
 
     puts("Feddisch");
     return 0;

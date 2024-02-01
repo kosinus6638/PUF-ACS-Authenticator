@@ -23,8 +23,9 @@ public:
 class AuthenticationServerImpl : public puf::AuthenticationServer {
     std::string url;
     std::map<uint64_t, SupplicantEntry> entries;
+    bool save_on_edit_;
 public:
-    AuthenticationServerImpl(std::string url_);
+    AuthenticationServerImpl(std::string url_, bool save_on_edit=false);
     void fetch() override;
     void sync() override;
     void store(const puf::MAC& base_mac, const puf::ECP_Point& A, puf::MAC& hashed_mac, int ctr) override;
