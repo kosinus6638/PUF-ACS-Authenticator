@@ -163,12 +163,14 @@ puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac) {
 
     if( auto it=entries.find(hashed_mac.to_u64()); it != entries.end() ) {
         auto &entry = it->second;
-        if(entry.ctr > 0) {
+        if(entry.ctr == 0) {
+            entries.erase(hashed_mac.to_u64());
+        } else {
             entry.decrease_counter();
             retval.ecp = entry.A;
             retval.mac = entry.base_mac;
             retval.valid = true;
-        }
+        } 
     }
 
     return retval;
