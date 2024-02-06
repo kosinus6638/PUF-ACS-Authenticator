@@ -29,5 +29,5 @@ public:
     void fetch() override;
     void sync() override;
     void store(const puf::MAC& base_mac, const puf::ECP_Point& A, puf::MAC& hashed_mac, int ctr) override;
-    puf::QueryResult query(const puf::MAC& hashed_mac) override;
+    puf::QueryResult query(const puf::MAC& hashed_mac, bool decrease_counter = true) override;
 };
