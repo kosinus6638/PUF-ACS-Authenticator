@@ -9,6 +9,7 @@
 #include "errors.h"
 #include "packets.h"
 
+#include <mbedtls/sha256.h>
 
 static volatile int keepGoing = 1;
 void intHandler(int signum) {
@@ -70,6 +71,39 @@ Options get_options(int argc, char** argv) {
 }
 
 
+bool validate_tagged_frame(const puf::PUF_Performance &pp, const puf::MPI& k, bool initial_frame = false) {
+    using namespace puf;
+
+    static uint8_t serv_hk_mac[32];
+    static uint8_t concat_buf[36];
+    static VLAN_Payload p;
+
+    size_t k_offset = 0;
+
+    if(initial_frame) {
+        k_offset = sizeof(MAC);
+        memcpy( concat_buf, pp.src_mac.bytes, k_offset );
+    } else {
+        k_offset = sizeof(serv_hk_mac);
+        memcpy( concat_buf, serv_hk_mac, k_offset );
+    }
+
+    // Concatenate 4 digits of k to concatenation buffer
+    memcpy( concat_buf+k_offset, k.p, 4 );
+
+    if( mbedtls_sha256_ret(concat_buf, sizeof(concat_buf), serv_hk_mac, 0) != 0) {
+        std::cerr << "Error calculating SHA256\n";
+        return false;
+    }
+
+    p.load1 = *(reinterpret_cast<uint16_t*>(serv_hk_mac));
+    p.load2 = *(reinterpret_cast<uint16_t*>(serv_hk_mac+30));
+
+    std::cout << std::hex << p.payload << " == " << std::hex << pp.get_payload().payload << std::endl;
+    return p.payload == pp.get_payload().payload;
+}
+
+
 int main(int argc, char** argv) {
     using namespace puf;
     signal(SIGINT, intHandler);
@@ -94,6 +128,7 @@ int main(int argc, char** argv) {
 
     uint8_t buffer[1528];
     size_t n;
+    bool initial_frame = true;
 
     while(keepGoing) {
         try {
@@ -106,9 +141,20 @@ int main(int argc, char** argv) {
                         std::cout << "Accepted" << std::endl;
                     }
                     break;
+
                 case PUF_PERFORMANCE_E:
+                    PUF_Performance pp;
+                    pp.from_binary(buffer, n);
+
+                    if( !validate_tagged_frame(pp, au.k, initial_frame) ) {
+                        std::cerr << "Error validating frame" << std::endl;
+                    }
+
+                    initial_frame = false;
                     break;
+
                 case PUF_UNKNOWN_E:
+                    std::cout << "Unknown type" << std::endl;
                     break;
                 default:
                     ;
