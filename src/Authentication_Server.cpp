@@ -160,7 +160,7 @@ void AuthenticationServerImpl::store(const puf::MAC& base_mac, const puf::ECP_Po
 }
 
 
-puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac) {
+puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac, bool decrease_counter) {
     puf::QueryResult retval;
     retval.valid = false;
 
@@ -169,7 +169,7 @@ puf::QueryResult AuthenticationServerImpl::query(const puf::MAC& hashed_mac) {
         if(entry.ctr == 0) {
             entries.erase(hashed_mac.to_u64());
         } else {
-            entry.decrease_counter();
+            if(decrease_counter) entry.decrease_counter();
             retval.ecp = entry.A;
             retval.mac = entry.base_mac;
             retval.valid = true;
