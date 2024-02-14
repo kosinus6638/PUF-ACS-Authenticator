@@ -6,10 +6,11 @@
 #include <cstring>
 #include <termios.h>
 #include <unistd.h>
+#include <thread>
 
 
 constexpr char DELIM = ';';
-constexpr char EOL  = '\r';
+constexpr char EOL  = '\x04';
 
 
 struct SerialOptions {
@@ -24,7 +25,7 @@ struct SerialOptions {
 static SerialOptions global_options = {
     "ttyUSB0",
     115200,
-    10,
+    5,
     100,
     1522
 };
@@ -230,32 +231,36 @@ void SerialMaster::setup() {
 }
 
 
-int SerialMaster::serial_write(const char *cmd, size_t cmdLen) {
+int SerialMaster::serial_write(const char *cmd) {
     size_t n = 0, n_written = 0;
+    size_t cmdLen = strlen(cmd);
 
     do {
-        n = write(serial_port, &cmd[n_written], 1);
+        n = write(serial_port, (cmd+n_written), 1);
         n_written += n;
-    } while(n>0 && n_written<cmdLen && cmd[n_written-1] != EOL);
+    } while(n>0 && n_written<cmdLen);
 
-    return n;
+    write(serial_port, &EOL, 1);
+
+    return n_written;
 }
 
 
 int SerialMaster::serial_read(char *cmd, size_t cmdLen) {
-    int n = 0, i = 0;
+    char buf = '\0';
+    size_t n = 0, n_written = 0;
 
-    char response[512];
-    memset(response, '\0', sizeof(response));
+    do {
+        if( (n = read(serial_port, &buf, 1)) == 1 ) {
+            cmd[n_written++] = buf;
+            n_written %= cmdLen;    // Dirty little hack to prevent buffer overflows
+        }
+    } while(n>0 && buf != EOL);
 
-    n = read( serial_port, &response, sizeof(response) );
+    --n_written;
 
-    if (n < 0) {
-        std::cout << "Error reading: " << strerror(errno) << std::endl;
-    }
-
-    strncpy(cmd, response, cmdLen);
-    return n;
+    cmd[n_written] = '\0';
+    return n_written;  // Returns no nullbyte but includes EOL
 }
 
 
@@ -266,27 +271,28 @@ void SerialMaster::show_status() {
 
 
 void SerialMaster::slave_connect() {
-    std::cout << "Sending connect command" << std::endl;
-    const char cmd[] = "connect\r"; 
+
+    const char cmd[] = "connect"; 
     char rcv_buf[512];
     memset(rcv_buf, 0, sizeof(rcv_buf));
 
-    serial_write(cmd, sizeof(cmd));
+    serial_write(cmd);
     serial_read(rcv_buf, sizeof(rcv_buf));
 
     if( strncmp(rcv_buf, "connect_ok\r", sizeof(rcv_buf)) != 0 ) {
         printf("Error connecting: %s\n", rcv_buf);
     }
+
+    puts("Received connect_ok");
 }
 
 
 void SerialMaster::slave_status() {
-    std::cout << "Sending status command" << std::endl;
-    const char cmd[] = "status\r"; 
+    const char cmd[] = "status"; 
     char rcv_buf[512];
     memset(rcv_buf, 0, sizeof(rcv_buf));
 
-    serial_write(cmd, sizeof(cmd));
+    serial_write(cmd);
     serial_read(rcv_buf, sizeof(rcv_buf));
 
     puts(rcv_buf);
@@ -294,30 +300,29 @@ void SerialMaster::slave_status() {
 
 
 void SerialMaster::slave_sign_up() {
-    std::cout << "Sending register command" << std::endl;
-    const char cmd[] = "register\r"; 
+    const char cmd[] = "register"; 
     char rcv_buf[512];
-    serial_write(cmd, sizeof(cmd));
+    serial_write(cmd);
     serial_read(rcv_buf, sizeof(rcv_buf));
     puts(rcv_buf);
 
-    if( strncmp(rcv_buf, "register_ok\r", sizeof(rcv_buf)) != 0 ) {
+    if( strncmp(rcv_buf, "register_ok", sizeof(rcv_buf)) != 0 ) {
         puts("Error register");
     }
+    puts("Received register_ok");
 }
 
 
 void SerialMaster::slave_speedtest() {
-    std::cout << "Sending speedtest command" << std::endl;
-    char cmd[512] = "speedtest\r";
+    char cmd[512] = "speedtest";
     char rcv_buf[512];
 
     memset(rcv_buf, 0, sizeof(rcv_buf));
 
-    serial_write(cmd, sizeof(cmd));
+    serial_write(cmd);
     serial_read(rcv_buf, sizeof(rcv_buf));
 
-    if( strncmp(rcv_buf, "speedtest_ok\r", sizeof(rcv_buf)) != 0 ) {
+    if( strncmp(rcv_buf, "speedtest_ok", sizeof(rcv_buf)) != 0 ) {
         printf("Wrong answer: %s\n", rcv_buf);
         return;
     }
@@ -326,11 +331,11 @@ void SerialMaster::slave_speedtest() {
     memset(rcv_buf, 0, sizeof(rcv_buf));
 
     /* Build command */
-    snprintf(cmd, sizeof(cmd), "%c%d%c%d%c%d\r", 
+    snprintf(cmd, sizeof(cmd), "%c%d%c%d%c%d", 
         DELIM, global_options.speedtest_seconds, DELIM, 
         global_options.delay_us, DELIM, global_options.frame_size);
 
-    serial_write(cmd, sizeof(cmd));
+    serial_write(cmd);
     serial_read(rcv_buf, sizeof(rcv_buf));
 
     puts(rcv_buf);

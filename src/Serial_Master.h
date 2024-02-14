@@ -36,7 +36,7 @@ private:
     int serial_port;
     bool connected;
 
-    int serial_write(const char *cmd, size_t cmdLen);
+    int serial_write(const char *cmd);
     int serial_read(char *cmd, size_t cmdLen);
 
     void setup();
